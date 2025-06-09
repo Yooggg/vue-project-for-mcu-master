@@ -2,22 +2,24 @@
   "tab": "Default",
   "settings": {
     "rfLink": {
-      "rxFrequency": "1245236.4",
+      "rxFrequency": "23",
       "txFrequency": "156.4",
-      "powerOutput": 3,
-      "bandwidth": "12.5 kHz"
+      "powerOutput": 5,
+      "bandwidth": "50 kHz",
+      "a": 66
     },
     "loaderFilter": {
       "rxFilterMode": "ASK",
-      "txFilterMode": "FSK"
+      "txFilterMode": "ASK"
     },
     "loaderSettings": {
       "enable600OhmInput": false,
       "squelchMute": false,
-      "invertedPTT": false,
+      "invertedPTT": true,
       "rxOnly": false,
       "invertedCD": false,
-      "dynamicThreshold": -52
+      "dynamicThreshold": -31,
+      "ui": true
     }
   }
 }

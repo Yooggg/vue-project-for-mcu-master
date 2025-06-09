@@ -192,10 +192,29 @@
             <div class="mb-3">
               <label class="form-label">Action</label>
               <select class="form-select" v-model="commandData.action">
-                <option value="set_frequency">Set Frequency</option>
+                <option value="set_parameter">Set Parameter</option>
+                <!-- <option value="set_frequency">Set Frequency</option>
                 <option value="set_power">Set Power</option>
                 <option value="set_bandwidth">Set Bandwidth</option>
-                <option value="custom">Custom Command</option>
+                <option value="custom">Custom Command</option> -->
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Category</label>
+              <select class="form-select" v-model="commandData.category">
+                <option value="rfLink">Rf Link</option>
+                <option value="loaderFilter">Loader Filter</option>
+                <option value="loaderSettings">Loader Settings</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Parameter</label>
+              <select class="form-select" v-model="commandData.parameter">
+                <option v-for="(value, key) in parameters[activeTab][commandData.category]" :key="key" :value="key">
+                  {{ key }}
+                </option>
               </select>
             </div>
 
@@ -214,7 +233,7 @@
           </div>
           <div class="modal-footer">
             <button class="btn btn-outline-secondary" @click="showCommandModal = false">Cancel</button>
-            <button class="btn btn-primary" @click="executeCommand">
+            <button class="btn btn-primary" @click="executeCommand(); parameters[activeTab][commandData.category][commandData.parameter] = commandData.value; /*settingChanged(activeTab, commandData.category, commandData.parameter)*/">
               <i class="bi bi-terminal"></i> Send Command
             </button>
           </div>
@@ -309,6 +328,8 @@ const newSetting = reactive({
 const showCommandModal = ref(false);
 const commandData = reactive({
   action: 'set_frequency',
+  category: '',
+  parameter: '',
   value: '',
   extraParams: '{}'
 });
@@ -325,7 +346,7 @@ function connectWebSocket() {
   ws.onclose = () => {
     console.log('WebSocket disconnected');
     isConnected.value = false;
-    // Попытка переподключения через 5 секунд
+    
     setTimeout(connectWebSocket, 5000);
   };
 
@@ -348,11 +369,11 @@ function connectWebSocket() {
           };
         }
       } else if (data.type === 'command_result') {
-        // Показываем уведомление о результате выполнения команды
-        showNotification(
-          data.message,
-          data.success ? 'success' : 'error'
-        );
+        // //уведомление о результате выполнения команды
+        // showNotification(
+        //   data.message,
+        //   data.success ? 'success' : 'error'
+        // );
       }
     } catch (error) {
       console.error('Failed to parse WebSocket message:', error);
@@ -365,7 +386,7 @@ function connectWebSocket() {
   };
 }
 
-// Вспомогательные функции
+
 function formatKey(key) {
   return key
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -425,7 +446,7 @@ function addSetting() {
   const category = newSetting.category;
   const key = newSetting.name.replace(/\s+/g, '');
   
-  // Создаем метаданные для новой настройки
+  //метаданные для новой настройки
   const meta = {
     type: newSetting.type
   };
@@ -459,7 +480,7 @@ function addSetting() {
   });
 }
 
-// Функция для показа уведомления
+//показ уведомления
 function showNotification(message, type = 'success') {
   notification.message = message;
   notification.type = type;
@@ -469,7 +490,7 @@ function showNotification(message, type = 'success') {
   }, 3000);
 }
 
-// Добавим функцию для отправки прямых команд
+//отправка прямых команд
 function sendCommand(command) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({
@@ -498,6 +519,8 @@ function executeCommand() {
   try {
     const command = {
       action: commandData.action,
+      category: commandData.category,
+      parameter: commandData.parameter,
       value: commandData.value
     };
 
