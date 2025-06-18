@@ -1,0 +1,98 @@
+{
+    "tabs": {
+        "Default": {
+            "settings": {
+                "rfLink": {
+                    "rxFrequency": "123456",
+                    "txFrequency": "554",
+                    "powerOutput": 5,
+                    "bandwidth": "50 kHz",
+                    "a": 66,
+                    "afzxc": 29
+                },
+                "loaderFilter": {
+                    "rxFilterMode": "FSK",
+                    "txFilterMode": "ASK",
+                    "prompts": "235",
+                    "атр": false
+                },
+                "loaderSettings": {
+                    "enable600OhmInput": false,
+                    "squelchMute": false,
+                    "invertedPTT": true,
+                    "rxOnly": false,
+                    "invertedCD": false,
+                    "dynamicThreshold": -39,
+                    "ui": true
+                }
+            },
+            "settingMeta": {
+                "rfLink": {
+                    "rxFrequency": {
+                        "type": "text"
+                    },
+                    "txFrequency": {
+                        "type": "text"
+                    },
+                    "powerOutput": {
+                        "type": "range",
+                        "min": 0,
+                        "max": 10,
+                        "unit": "W"
+                    },
+                    "bandwidth": {
+                        "type": "select",
+                        "options": [
+                        "12.5 kHz",
+                        "25 kHz",
+                        "50 kHz"
+                        ]
+                    },
+                    "afzxc": {
+                        "type": "range",
+                        "min": 0,
+                        "max": 100,
+                        "unit": ""
+                    }
+                    },
+                    "loaderFilter": {
+                    "rxFilterMode": {
+                        "type": "select",
+                        "options": [
+                        "FSK",
+                        "ASK",
+                        "PSK"
+                        ]
+                    },
+                    "txFilterMode": {
+                        "type": "select",
+                        "options": [
+                        "FSK",
+                        "ASK",
+                        "PSK"
+                        ]
+                    },
+                    "атр": {
+                        "type": "checkbox"
+                    }
+                }
+            }
+        },
+        "Link 1": {
+            "settings": {
+
+            },
+            "settingMeta": {
+                
+            }
+        },
+        "Link 2": {
+            "settings": {
+
+            },
+            "settingMeta": {
+                
+            }
+        }
+    }
+}

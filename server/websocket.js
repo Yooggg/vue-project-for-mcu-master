@@ -131,6 +131,43 @@ function saveSettings(tab, settings) {
   }
 }
 
+function uploadFromFile(file_name){
+  // try {
+  //   const files = ['default', 'link_1', 'link_2'].map(name => `settings_${name}.json`);
+  //   files.forEach(file => {
+  //     const filePath = path.join(__dirname, '..', 'public', 'data', file);
+  //     if (fs.existsSync(filePath)) {
+  //       const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  //       if (data.tabs && data.settings) {
+  //         settingsStore[data.tabs] = deepMerge(settingsStore[data.tabs], data.settings);
+  //       }
+  //       // Также загружаем метаданные, если они сохранены
+  //       if (data.settingMeta) {
+  //         Object.assign(serverSettingMeta, data.settingMeta);
+  //       }
+  //     }
+  //   });
+  // } catch (error) {
+  //   console.error('Error loading settings:', error);
+  // }
+
+
+  const filePath = path.join(__dirname, '..', 'public', 'data', 'settings' ,file_name);
+  if (fs.existsSync(filePath)) {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (data.tabs){
+      for (let key in settingsStore) {
+        delete settingsStore[key];
+      }
+      // for (const key in data.tabs) {
+      //   settingsStore[key] = data.tabs[key];
+      // }
+      settingsStore.tabs = data.tabs;
+      console.log(settingsStore.tabs.Default.settings.rfLink.rxFrequency);
+    }
+  }
+}
+
 // Загружаем настройки при запуске сервера
 loadSettings();
 
@@ -149,8 +186,25 @@ wss.on('connection', function connection(ws) {
 
   ws.on('message', async function incoming(message) {
     try {
-      const data = JSON.parse(message);
       
+      const data = JSON.parse(message);
+      if (data.action === 'updateFromFile'){
+        uploadFromFile(data.fileName);
+        wss.clients.forEach(client => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'upload_settings',
+                settings: settingsStore,
+              }));
+            }
+          });
+
+          ws.send(JSON.stringify({
+            type: 'upload_settings',
+            settingsStore: settingsStore,
+          }));
+      }
+
       if (data.type === 'setting_change') {
         // Обновляем значение в хранилище
         if (!settingsStore[data.tab]) {

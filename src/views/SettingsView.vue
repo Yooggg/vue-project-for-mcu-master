@@ -118,6 +118,13 @@
       </button>
     </div>
 
+    <!-- Upload Button -->
+    <div class="mt-4 mb-5">
+      <button class="btn btn-lg btn-primary" @click="uploadFromFile('settings.json')">
+        <i class="bi bi-save"></i> Upload from file
+      </button>
+    </div>
+
     <!-- Add Setting Modal -->
     <div class="modal fade show d-block" tabindex="-1" v-if="showModal" style="background-color: rgba(0,0,0,0.5);">
       <div class="modal-dialog modal-dialog-centered">
@@ -276,7 +283,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
+import { ref, reactive, onMounted, onUnmounted, watch , toRaw} from 'vue';
 import SettingsCard from '@/components/SettingsCard.vue';
 
 const tabs = ['Default', 'Link 1', 'Link 2'];
@@ -284,14 +291,12 @@ const activeTab = ref('Default');
 const isConnected = ref(false);
 let ws = null;
 
-// Добавляем состояние для уведомлений
 const notification = reactive({
   show: false,
   message: '',
   type: 'success' // или 'error'
 });
 
-// Функция для показа уведомления
 function showNotification(message, type = 'success') {
   notification.message = message;
   notification.type = type;
@@ -334,7 +339,6 @@ const parameters = reactive({
   }
 });
 
-// Метаданные для настроек
 const settingMeta = reactive({
   rfLink: {
     rxFrequency: { type: 'text' },
@@ -382,7 +386,6 @@ const commandData = reactive({
   newSettingOptionsRaw: ''
 });
 
-// Watchers для обновления параметра при смене категории
 watch(() => commandData.category, (newCategory) => {
   const currentTabParams = parameters[activeTab.value];
   if (currentTabParams && currentTabParams[newCategory]) {
@@ -393,7 +396,6 @@ watch(() => commandData.category, (newCategory) => {
   }
 });
 
-// Функция для глубокого объединения объектов (добавляем эту функцию)
 function deepMerge(target, source) {
   for (const key in source) {
     if (source.hasOwnProperty(key)) {
@@ -410,7 +412,6 @@ function deepMerge(target, source) {
   return target;
 }
 
-// WebSocket функции
 function connectWebSocket() {
   ws = new WebSocket('ws://localhost:8080');
 
@@ -428,34 +429,32 @@ function connectWebSocket() {
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      console.log('Received WebSocket message:', data); // Добавил лог для отладки
+      console.log('Received WebSocket message:', data);
 
       if (data.type === 'settings') {
         if (data.tab && data.category && data.settings) {
-          // Это может быть частичное обновление категории (например, после set_parameter)
+          
           if (!parameters[data.tab]) {
             parameters[data.tab] = {};
           }
           parameters[data.tab][data.category] = deepMerge(parameters[data.tab][data.category] || {}, data.settings[data.category]);
 
-          // Также обновим settingMeta для этой конкретной категории, если она пришла
           if (data.settingMeta && data.settingMeta[data.category]) {
             if (!settingMeta[data.category]) {
-              settingMeta[data.category] = reactive({}); // Убедимся, что категория реактивна
+              settingMeta[data.category] = reactive({});
             }
             Object.assign(settingMeta[data.category], deepMerge(settingMeta[data.category], data.settingMeta[data.category]));
           }
 
         } else if (data.tab && data.settings) {
-          // Это полное обновление настроек для вкладки (например, после create_parameter)
+          
           parameters[data.tab] = deepMerge(parameters[data.tab] || {}, data.settings);
           
-          // Обновим settingMeta для всех категорий, используя итерацию и deepMerge
           if (data.settingMeta) {
               for (const categoryKey in data.settingMeta) {
                   if (data.settingMeta.hasOwnProperty(categoryKey)) {
                       if (!settingMeta[categoryKey]) {
-                          settingMeta[categoryKey] = reactive({}); // Убедимся, что новая категория реактивна
+                          settingMeta[categoryKey] = reactive({});
                       }
                       Object.assign(settingMeta[categoryKey], deepMerge(settingMeta[categoryKey], data.settingMeta[categoryKey]));
                   }
@@ -472,6 +471,16 @@ function connectWebSocket() {
           `Значение ${formatKey(data.category)}/${formatKey(data.parameter)}: ${data.value}`,
           'success'
         );
+      } else if (data.type === 'upload_settings'){
+        console.log(data.settingsStore);
+        //if (data.tabs){
+          for (let tab in data.settingsStore.tabs){
+            for(let setting in data.settingsStore.tabs[tab].settings){
+              parameters[tab] = data.settingsStore.tabs[tab].settings;
+            }
+          }
+          console.log(toRaw(parameters));
+        //}
       }
     } catch (error) {
       console.error('Failed to parse WebSocket message:', error);
@@ -484,7 +493,6 @@ function connectWebSocket() {
   };
 }
 
-// Вспомогательные функции
 function formatKey(key) {
   return key
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -493,7 +501,6 @@ function formatKey(key) {
 }
 
 function getSettingType(tab, category, key) {
-  // Используем settingMeta для получения типа
   return settingMeta[category]?.[key]?.type || 'text';
 }
 
@@ -518,6 +525,17 @@ function settingChanged(tab, category, key) {
       category,
       key,
       value: parameters[tab][category][key]
+    }));
+  } else {
+    showNotification('Нет подключения к серверу', 'error');
+  }
+}
+
+function uploadFromFile(file_name){
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      action: 'updateFromFile',
+      fileName: file_name
     }));
   } else {
     showNotification('Нет подключения к серверу', 'error');
@@ -550,7 +568,6 @@ function addSetting() {
     parameters[activeTab.value][category] = {};
   }
 
-  // Создаем метаданные для новой настройки
   const meta = {
     type: newSetting.type
   };
@@ -575,7 +592,6 @@ function addSetting() {
   showModal.value = false;
   showNotification(`Настройка '${formatKey(key)}' добавлена в ${formatKey(category)}`, 'success');
 
-  // Сбрасываем форму
   Object.assign(newSetting, {
     category: 'rfLink',
     name: '',
@@ -587,7 +603,6 @@ function addSetting() {
   });
 }
 
-// Функция для отправки прямых команд
 function sendCommand(command) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(command));
@@ -599,7 +614,6 @@ function sendCommand(command) {
 function executeCommand() {
   try {
     if (commandData.action === 'set_parameter') {
-      // Обновляем значение локально и отправляем на сервер
       if (!parameters[activeTab.value][commandData.category]) {
         parameters[activeTab.value][commandData.category] = {};
       }
@@ -636,15 +650,12 @@ function executeCommand() {
       } else {
         newSettingObj.initialValue = '';
       }
-      // Set the type of the setting within meta
       newSettingObj.meta.type = commandData.newSettingType;
 
-      // Отправляем команду на сервер, сервер обновит локальные параметры через onmessage
       sendCommand(newSettingObj);
       showNotification(`Запрос на создание параметра '${formatKey(newParamKey)}' отправлен`, 'info');
 
     } else if (commandData.action === 'get_parameter') {
-      // Отправляем команду на сервер для получения значения
       const getCommand = {
         type: 'get_parameter',
         tab: activeTab.value,
@@ -657,7 +668,6 @@ function executeCommand() {
 
     showCommandModal.value = false;
     
-    // Сбрасываем форму (кроме action, category, parameter)
     Object.assign(commandData, {
       value: '',
       extraParams: '{}',
@@ -687,7 +697,6 @@ function getCommandPlaceholder() {
   }
 }
 
-// Lifecycle hooks
 onMounted(() => {
   connectWebSocket();
 });

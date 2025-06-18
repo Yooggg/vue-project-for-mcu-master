@@ -2,27 +2,7 @@
   "tab": "Default",
   "settings": {
     "rfLink": {
-      "rxFrequency": "23",
-      "txFrequency": "5",
-      "powerOutput": 5,
-      "bandwidth": "50 kHz",
-      "a": 66,
-      "afzxc": 29
-    },
-    "loaderFilter": {
-      "rxFilterMode": "FSK",
-      "txFilterMode": "ASK",
-      "prompts": "235",
-      "атр": false
-    },
-    "loaderSettings": {
-      "enable600OhmInput": false,
-      "squelchMute": false,
-      "invertedPTT": true,
-      "rxOnly": false,
-      "invertedCD": false,
-      "dynamicThreshold": -39,
-      "ui": true
+      "rxFrequency": "1238"
     }
   },
   "settingMeta": {
@@ -52,6 +32,9 @@
         "min": 0,
         "max": 100,
         "unit": ""
+      },
+      "abc": {
+        "type": "checkbox"
       }
     },
     "loaderFilter": {
@@ -96,6 +79,16 @@
         "min": -100,
         "max": 0,
         "unit": "dBm"
+      },
+      "q": {
+        "options": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e"
+        ],
+        "type": "select"
       }
     }
   }
