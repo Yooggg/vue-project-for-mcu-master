@@ -39,7 +39,7 @@
         <button class="btn btn-outline-primary me-2" @click="showCommandModal = true">
           <i class="bi bi-terminal"></i> Send command
         </button>
-        <button class="btn btn-outline-primary" @click="showModal = true">
+        <button class="btn btn-primary" @click="showModal = true">
           <i class="bi bi-plus-lg"></i> Add setting
         </button>
       </div>
@@ -113,7 +113,7 @@
 
     <!-- Save Button -->
     <div class="mt-4 mb-5">
-      <button class="btn btn-lg btn-outline-primary" @click="saveSettings">
+      <button class="btn btn-lg btn-primary" @click="saveSettings">
         <i class="bi bi-save"></i> Save Settings
       </button>
     </div>
@@ -193,23 +193,21 @@
               <label class="form-label">Action</label>
               <select class="form-select" v-model="commandData.action">
                 <option value="set_parameter">Set Parameter</option>
-                <!-- <option value="set_frequency">Set Frequency</option>
-                <option value="set_power">Set Power</option>
-                <option value="set_bandwidth">Set Bandwidth</option>
-                <option value="custom">Custom Command</option> -->
+                <option value="create_parameter">Create Parameter</option>
+                <option value="get_parameter">Get Parameter</option>
               </select>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-3" v-if="commandData.action !== 'get_parameter'">
               <label class="form-label">Category</label>
               <select class="form-select" v-model="commandData.category">
-                <option value="rfLink">Rf Link</option>
-                <option value="loaderFilter">Loader Filter</option>
+                <option value="rfLink">RF Link</option>
+                <option value="loaderFilter">Loader Filter Settings</option>
                 <option value="loaderSettings">Loader Settings</option>
               </select>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-3" v-if="commandData.action !== 'create_parameter'">
               <label class="form-label">Parameter</label>
               <select class="form-select" v-model="commandData.parameter">
                 <option v-for="(value, key) in parameters[activeTab][commandData.category]" :key="key" :value="key">
@@ -218,12 +216,46 @@
               </select>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-3" v-if="commandData.action === 'set_parameter'">
               <label class="form-label">Value</label>
               <input type="text" class="form-control" v-model="commandData.value" 
                      :placeholder="getCommandPlaceholder()" />
             </div>
 
+            <template v-if="commandData.action === 'create_parameter'">
+              <div class="mb-3">
+                <label class="form-label">New Parameter Name</label>
+                <input type="text" class="form-control" v-model="commandData.newSettingName" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Type</label>
+                <select class="form-select" v-model="commandData.newSettingType">
+                  <option value="text">Number / Text</option>
+                  <option value="checkbox">Checkbox</option>
+                  <option value="range">Range Slider</option>
+                  <option value="select">Dropdown</option>
+                </select>
+              </div>
+              <div v-if="commandData.newSettingType === 'range'" class="mb-3">
+                <label class="form-label">Range</label>
+                <div class="row g-2">
+                  <div class="col">
+                    <input type="number" class="form-control" v-model.number="commandData.newSettingMin" placeholder="Min" />
+                  </div>
+                  <div class="col">
+                    <input type="number" class="form-control" v-model.number="commandData.newSettingMax" placeholder="Max" />
+                  </div>
+                  <div class="col">
+                    <input type="text" class="form-control" v-model="commandData.newSettingUnit" placeholder="Unit" />
+                  </div>
+                </div>
+              </div>
+              <div v-if="commandData.newSettingType === 'select'" class="mb-3">
+                <label class="form-label">Options (comma separated)</label>
+                <input type="text" class="form-control" v-model="commandData.newSettingOptionsRaw" />
+              </div>
+            </template>
+            
             <div class="mb-3" v-if="commandData.action === 'custom'">
               <label class="form-label">Additional Parameters (JSON)</label>
               <textarea class="form-control font-monospace" v-model="commandData.extraParams" 
@@ -233,7 +265,7 @@
           </div>
           <div class="modal-footer">
             <button class="btn btn-outline-secondary" @click="showCommandModal = false">Cancel</button>
-            <button class="btn btn-primary" @click="executeCommand(); parameters[activeTab][commandData.category][commandData.parameter] = commandData.value; /*settingChanged(activeTab, commandData.category, commandData.parameter)*/">
+            <button class="btn btn-primary" @click="executeCommand">
               <i class="bi bi-terminal"></i> Send Command
             </button>
           </div>
@@ -244,7 +276,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
 import SettingsCard from '@/components/SettingsCard.vue';
 
 const tabs = ['Default', 'Link 1', 'Link 2'];
@@ -258,6 +290,16 @@ const notification = reactive({
   message: '',
   type: 'success' // или 'error'
 });
+
+// Функция для показа уведомления
+function showNotification(message, type = 'success') {
+  notification.message = message;
+  notification.type = type;
+  notification.show = true;
+  setTimeout(() => {
+    notification.show = false;
+  }, 3000);
+}
 
 const parameters = reactive({
   Default: {
@@ -327,12 +369,46 @@ const newSetting = reactive({
 
 const showCommandModal = ref(false);
 const commandData = reactive({
-  action: 'set_frequency',
-  category: '',
+  action: 'set_parameter',
+  category: 'rfLink',
   parameter: '',
   value: '',
-  extraParams: '{}'
+  extraParams: '{}',
+  newSettingName: '',
+  newSettingType: 'text',
+  newSettingMin: 0,
+  newSettingMax: 100,
+  newSettingUnit: '',
+  newSettingOptionsRaw: ''
 });
+
+// Watchers для обновления параметра при смене категории
+watch(() => commandData.category, (newCategory) => {
+  const currentTabParams = parameters[activeTab.value];
+  if (currentTabParams && currentTabParams[newCategory]) {
+    const firstParamKey = Object.keys(currentTabParams[newCategory])[0];
+    commandData.parameter = firstParamKey || '';
+  } else {
+    commandData.parameter = '';
+  }
+});
+
+// Функция для глубокого объединения объектов (добавляем эту функцию)
+function deepMerge(target, source) {
+  for (const key in source) {
+    if (source.hasOwnProperty(key)) {
+      if (source[key] instanceof Object && !Array.isArray(source[key])) {
+        if (!target[key] || typeof target[key] !== 'object' || Array.isArray(target[key])) {
+          target[key] = reactive({});
+        }
+        deepMerge(target[key], source[key]);
+      } else {
+        target[key] = source[key];
+      }
+    }
+  }
+  return target;
+}
 
 // WebSocket функции
 function connectWebSocket() {
@@ -346,34 +422,56 @@ function connectWebSocket() {
   ws.onclose = () => {
     console.log('WebSocket disconnected');
     isConnected.value = false;
-    
     setTimeout(connectWebSocket, 5000);
   };
 
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
+      console.log('Received WebSocket message:', data); // Добавил лог для отладки
+
       if (data.type === 'settings') {
         if (data.tab && data.category && data.settings) {
+          // Это может быть частичное обновление категории (например, после set_parameter)
           if (!parameters[data.tab]) {
             parameters[data.tab] = {};
           }
-          parameters[data.tab][data.category] = {
-            ...parameters[data.tab][data.category],
-            ...data.settings[data.category]
-          };
+          parameters[data.tab][data.category] = deepMerge(parameters[data.tab][data.category] || {}, data.settings[data.category]);
+
+          // Также обновим settingMeta для этой конкретной категории, если она пришла
+          if (data.settingMeta && data.settingMeta[data.category]) {
+            if (!settingMeta[data.category]) {
+              settingMeta[data.category] = reactive({}); // Убедимся, что категория реактивна
+            }
+            Object.assign(settingMeta[data.category], deepMerge(settingMeta[data.category], data.settingMeta[data.category]));
+          }
+
         } else if (data.tab && data.settings) {
-          parameters[data.tab] = {
-            ...parameters[data.tab],
-            ...data.settings
-          };
+          // Это полное обновление настроек для вкладки (например, после create_parameter)
+          parameters[data.tab] = deepMerge(parameters[data.tab] || {}, data.settings);
+          
+          // Обновим settingMeta для всех категорий, используя итерацию и deepMerge
+          if (data.settingMeta) {
+              for (const categoryKey in data.settingMeta) {
+                  if (data.settingMeta.hasOwnProperty(categoryKey)) {
+                      if (!settingMeta[categoryKey]) {
+                          settingMeta[categoryKey] = reactive({}); // Убедимся, что новая категория реактивна
+                      }
+                      Object.assign(settingMeta[categoryKey], deepMerge(settingMeta[categoryKey], data.settingMeta[categoryKey]));
+                  }
+              }
+          }
         }
       } else if (data.type === 'command_result') {
-        // //уведомление о результате выполнения команды
-        // showNotification(
-        //   data.message,
-        //   data.success ? 'success' : 'error'
-        // );
+        showNotification(
+          data.message,
+          data.success ? 'success' : 'error'
+        );
+      } else if (data.type === 'get_parameter_result') {
+        showNotification(
+          `Значение ${formatKey(data.category)}/${formatKey(data.parameter)}: ${data.value}`,
+          'success'
+        );
       }
     } catch (error) {
       console.error('Failed to parse WebSocket message:', error);
@@ -386,7 +484,7 @@ function connectWebSocket() {
   };
 }
 
-
+// Вспомогательные функции
 function formatKey(key) {
   return key
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -395,6 +493,7 @@ function formatKey(key) {
 }
 
 function getSettingType(tab, category, key) {
+  // Используем settingMeta для получения типа
   return settingMeta[category]?.[key]?.type || 'text';
 }
 
@@ -420,17 +519,17 @@ function settingChanged(tab, category, key) {
       key,
       value: parameters[tab][category][key]
     }));
+  } else {
+    showNotification('Нет подключения к серверу', 'error');
   }
 }
 
 function saveSettings() {
-  // Создаем JSON файл с текущими настройками
   const settingsData = {
     tab: activeTab.value,
     settings: parameters[activeTab.value]
   };
   
-  // Создаем Blob и скачиваем файл
   const blob = new Blob([JSON.stringify(settingsData, null, 2)], { type: 'application/json' });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -440,33 +539,41 @@ function saveSettings() {
   a.click();
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
+  showNotification('Настройки сохранены', 'success');
 }
 
 function addSetting() {
   const category = newSetting.category;
   const key = newSetting.name.replace(/\s+/g, '');
   
-  //метаданные для новой настройки
+  if (!parameters[activeTab.value][category]) {
+    parameters[activeTab.value][category] = {};
+  }
+
+  // Создаем метаданные для новой настройки
   const meta = {
     type: newSetting.type
   };
 
+  let initialValue;
   if (newSetting.type === 'range') {
     meta.min = newSetting.min;
     meta.max = newSetting.max;
     meta.unit = newSetting.unit;
-    parameters[activeTab.value][category][key] = newSetting.min;
+    initialValue = newSetting.min;
   } else if (newSetting.type === 'select') {
     meta.options = newSetting.optionsRaw.split(',').map(opt => opt.trim());
-    parameters[activeTab.value][category][key] = meta.options[0];
+    initialValue = meta.options[0];
   } else if (newSetting.type === 'checkbox') {
-    parameters[activeTab.value][category][key] = false;
+    initialValue = false;
   } else {
-    parameters[activeTab.value][category][key] = '';
+    initialValue = '';
   }
 
+  parameters[activeTab.value][category][key] = initialValue;
   settingMeta[category][key] = meta;
   showModal.value = false;
+  showNotification(`Настройка '${formatKey(key)}' добавлена в ${formatKey(category)}`, 'success');
 
   // Сбрасываем форму
   Object.assign(newSetting, {
@@ -480,25 +587,90 @@ function addSetting() {
   });
 }
 
-//показ уведомления
-function showNotification(message, type = 'success') {
-  notification.message = message;
-  notification.type = type;
-  notification.show = true;
-  setTimeout(() => {
-    notification.show = false;
-  }, 3000);
-}
-
-//отправка прямых команд
+// Функция для отправки прямых команд
 function sendCommand(command) {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
-      type: 'direct_command',
-      command
-    }));
+    ws.send(JSON.stringify(command));
   } else {
     showNotification('Нет подключения к серверу', 'error');
+  }
+}
+
+function executeCommand() {
+  try {
+    if (commandData.action === 'set_parameter') {
+      // Обновляем значение локально и отправляем на сервер
+      if (!parameters[activeTab.value][commandData.category]) {
+        parameters[activeTab.value][commandData.category] = {};
+      }
+      parameters[activeTab.value][commandData.category][commandData.parameter] = commandData.value;
+      settingChanged(activeTab.value, commandData.category, commandData.parameter);
+      showNotification(`Параметр ${formatKey(commandData.parameter)} изменен на ${commandData.value}`, 'success');
+
+    } else if (commandData.action === 'create_parameter') {
+      const newParamKey = commandData.newSettingName.replace(/\s+/g, '');
+      if (!newParamKey) {
+        showNotification('Название новой настройки не может быть пустым', 'error');
+        return;
+      }
+
+      const newSettingObj = {
+        type: 'create_parameter',
+        tab: activeTab.value,
+        category: commandData.category,
+        key: newParamKey,
+        initialValue: '',
+        meta: {},
+      };
+
+      if (commandData.newSettingType === 'range') {
+        newSettingObj.meta.min = commandData.newSettingMin;
+        newSettingObj.meta.max = commandData.newSettingMax;
+        newSettingObj.meta.unit = commandData.newSettingUnit;
+        newSettingObj.initialValue = commandData.newSettingMin;
+      } else if (commandData.newSettingType === 'select') {
+        newSettingObj.meta.options = commandData.newSettingOptionsRaw.split(',').map(opt => opt.trim());
+        newSettingObj.initialValue = newSettingObj.meta.options[0];
+      } else if (commandData.newSettingType === 'checkbox') {
+        newSettingObj.initialValue = false;
+      } else {
+        newSettingObj.initialValue = '';
+      }
+      // Set the type of the setting within meta
+      newSettingObj.meta.type = commandData.newSettingType;
+
+      // Отправляем команду на сервер, сервер обновит локальные параметры через onmessage
+      sendCommand(newSettingObj);
+      showNotification(`Запрос на создание параметра '${formatKey(newParamKey)}' отправлен`, 'info');
+
+    } else if (commandData.action === 'get_parameter') {
+      // Отправляем команду на сервер для получения значения
+      const getCommand = {
+        type: 'get_parameter',
+        tab: activeTab.value,
+        category: commandData.category,
+        key: commandData.parameter
+      };
+      sendCommand(getCommand);
+      showNotification(`Запрос значения параметра '${formatKey(commandData.parameter)}' отправлен`, 'info');
+    }
+
+    showCommandModal.value = false;
+    
+    // Сбрасываем форму (кроме action, category, parameter)
+    Object.assign(commandData, {
+      value: '',
+      extraParams: '{}',
+      newSettingName: '',
+      newSettingType: 'text',
+      newSettingMin: 0,
+      newSettingMax: 100,
+      newSettingUnit: '',
+      newSettingOptionsRaw: ''
+    });
+
+  } catch (error) {
+    showNotification('Ошибка при отправке команды: ' + error.message, 'error');
   }
 }
 
@@ -512,36 +684,6 @@ function getCommandPlaceholder() {
       return 'Например: 12.5 kHz';
     default:
       return 'Введите значение';
-  }
-}
-
-function executeCommand() {
-  try {
-    const command = {
-      action: commandData.action,
-      category: commandData.category,
-      parameter: commandData.parameter,
-      value: commandData.value
-    };
-
-    if (commandData.action === 'custom') {
-      try {
-        const extraParams = JSON.parse(commandData.extraParams);
-        Object.assign(command, extraParams);
-      } catch (e) {
-        showNotification('Ошибка в формате дополнительных параметров', 'error');
-        return;
-      }
-    }
-
-    sendCommand(command);
-    showCommandModal.value = false;
-    
-    // Очищаем форму
-    commandData.value = '';
-    commandData.extraParams = '{}';
-  } catch (error) {
-    showNotification('Ошибка при отправке команды: ' + error.message, 'error');
   }
 }
 
