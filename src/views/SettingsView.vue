@@ -9,16 +9,6 @@
       </div>
     </div>
 
-    <!-- Notification -->
-    <div v-if="notification.show" 
-         class="alert mb-4"
-         :class="{
-           'alert-success': notification.type === 'success',
-           'alert-danger': notification.type === 'error'
-         }">
-      {{ notification.message }}
-    </div>
-
     <!-- Tabs -->
     <div class="d-flex align-items-center mb-4 border-bottom">
       <div class="nav nav-tabs border-0">
@@ -313,6 +303,24 @@
         </div>
       </div>
     </div>
+
+    <!-- Notification -->
+    <div v-if="notification.show" 
+         class="notification-popup"
+         :class="{
+           'notification-success': notification.type === 'success',
+           'notification-error': notification.type === 'error'
+         }"
+         :key="notification.id">
+      <div class="notification-content">
+        <div class="notification-icon">
+          <i v-if="notification.type === 'success'" class="bi bi-check-circle-fill"></i>
+          <i v-else-if="notification.type === 'error'" class="bi bi-exclamation-circle-fill"></i>
+          <i v-else class="bi bi-info-circle-fill"></i>
+        </div>
+        <div class="notification-message">{{ notification.message }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -329,16 +337,68 @@ let ws = null;
 const notification = reactive({
   show: false,
   message: '',
-  type: 'success' // или 'error'
+  type: 'success', // 'success', 'error', 'info'
+  id: 0
 });
 
+// Очередь уведомлений
+const notificationQueue = [];
+let notificationTimer = null;
+
 function showNotification(message, type = 'success') {
-  notification.message = message;
-  notification.type = type;
-  notification.show = true;
-  setTimeout(() => {
+  const notificationId = Date.now();
+  
+  // Добавляем уведомление в очередь
+  notificationQueue.push({
+    id: notificationId,
+    message,
+    type
+  });
+  
+  // Если уведомление не отображается, запускаем процесс
+  if (!notification.show) {
+    processNotificationQueue();
+  }
+}
+
+function processNotificationQueue() {
+  // Если очередь пуста, выходим
+  if (notificationQueue.length === 0) {
     notification.show = false;
+    return;
+  }
+  
+  // Берем следующее уведомление из очереди
+  const next = notificationQueue.shift();
+  
+  // Отображаем уведомление
+  notification.message = next.message;
+  notification.type = next.type;
+  notification.id = next.id;
+  notification.show = true;
+  
+  // Устанавливаем таймер для скрытия через 3 секунды
+  clearTimeout(notificationTimer);
+  notificationTimer = setTimeout(() => {
+    hideCurrentNotification();
   }, 3000);
+}
+
+function hideCurrentNotification() {
+  // Добавляем класс hide для анимации исчезновения
+  const notificationEl = document.querySelector('.notification-popup');
+  if (notificationEl) {
+    notificationEl.classList.add('hide');
+    
+    // Через время анимации удаляем элемент и проверяем следующее уведомление
+    setTimeout(() => {
+      notification.show = false;
+      setTimeout(processNotificationQueue, 100); // небольшая задержка перед показом следующего
+    }, 300); // время должно соответствовать transition в CSS
+  } else {
+    notification.show = false;
+    setTimeout(processNotificationQueue, 100);
+  }
 }
 
 const parameters = reactive({
@@ -882,3 +942,56 @@ onUnmounted(() => {
   }
 });
 </script>
+
+<style scoped>
+.notification-popup {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  max-width: 350px;
+  min-width: 280px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 9999;
+  animation: slideIn 0.3s ease-out;
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.notification-popup.hide {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+}
+
+.notification-icon {
+  margin-right: 12px;
+  font-size: 1.2rem;
+}
+
+.notification-message {
+  flex: 1;
+  font-weight: 500;
+}
+
+.notification-success {
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+.notification-error {
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+@keyframes slideIn {
+  0% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+</style>
