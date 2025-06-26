@@ -1,101 +1,101 @@
 {
-  "tab": "Default",
-  "settings": {
-    "rfLink": {
-      "rxFrequency": "23",
-      "txFrequency": "5",
-      "powerOutput": 5,
-      "bandwidth": "50 kHz",
-      "a": 66,
-      "afzxc": 29
-    },
-    "loaderFilter": {
-      "rxFilterMode": "FSK",
-      "txFilterMode": "ASK",
-      "prompts": "235",
-      "атр": false
-    },
-    "loaderSettings": {
-      "enable600OhmInput": false,
-      "squelchMute": false,
-      "invertedPTT": true,
-      "rxOnly": false,
-      "invertedCD": false,
-      "dynamicThreshold": -39,
-      "ui": true
-    }
-  },
-  "settingMeta": {
-    "rfLink": {
-      "rxFrequency": {
-        "type": "text"
+  "tabs": {
+    "Default": {
+      "settings": {
+        "rfLink": {
+          "rxFrequency": "123456",
+          "txFrequency": "554",
+          "powerOutput": 5,
+          "bandwidth": "50 kHz",
+          "a": 66,
+          "afzxc": 29
+        },
+        "loaderFilter": {
+          "rxFilterMode": "FSK",
+          "txFilterMode": "ASK",
+          "prompts": "235",
+          "атр": false
+        },
+        "loaderSettings": {
+          "enable600OhmInput": false,
+          "squelchMute": false,
+          "invertedPTT": true,
+          "rxOnly": false,
+          "invertedCD": false,
+          "dynamicThreshold": -39,
+          "ui": true
+        },
+        "SWR": {
+          "SWR": 1.5,
+          "SWR_min": 42,
+          "SWR_max": 1.8,
+          "SWR_min_dB": -10,
+          "SWR_max_dB": 10,
+          "SWR_min_dB_dB": -10,
+          "SWR_max_dB_dB": 10
+        }
       },
-      "txFrequency": {
-        "type": "text"
-      },
-      "powerOutput": {
-        "type": "range",
-        "min": 0,
-        "max": 10,
-        "unit": "W"
-      },
-      "bandwidth": {
-        "type": "select",
-        "options": [
-          "12.5 kHz",
-          "25 kHz",
-          "50 kHz"
-        ]
-      },
-      "afzxc": {
-        "type": "range",
-        "min": 0,
-        "max": 100,
-        "unit": ""
-      }
-    },
-    "loaderFilter": {
-      "rxFilterMode": {
-        "type": "select",
-        "options": [
-          "FSK",
-          "ASK",
-          "PSK"
-        ]
-      },
-      "txFilterMode": {
-        "type": "select",
-        "options": [
-          "FSK",
-          "ASK",
-          "PSK"
-        ]
-      },
-      "атр": {
-        "type": "checkbox"
-      }
-    },
-    "loaderSettings": {
-      "enable600OhmInput": {
-        "type": "checkbox"
-      },
-      "squelchMute": {
-        "type": "checkbox"
-      },
-      "invertedPTT": {
-        "type": "checkbox"
-      },
-      "rxOnly": {
-        "type": "checkbox"
-      },
-      "invertedCD": {
-        "type": "checkbox"
-      },
-      "dynamicThreshold": {
-        "type": "range",
-        "min": -100,
-        "max": 0,
-        "unit": "dBm"
+      "settingMeta": {
+        "rfLink": {
+          "rxFrequency": {
+            "type": "text"
+          },
+          "txFrequency": {
+            "type": "text"
+          },
+          "powerOutput": {
+            "type": "range",
+            "min": 0,
+            "max": 10,
+            "unit": "W"
+          },
+          "bandwidth": {
+            "type": "select",
+            "options": [
+              "12.5 kHz",
+              "25 kHz",
+              "50 kHz"
+            ]
+          },
+          "afzxc": {
+            "type": "range",
+            "min": 0,
+            "max": 100,
+            "unit": ""
+          }
+        },
+        "loaderFilter": {
+          "rxFilterMode": {
+            "type": "select",
+            "options": [
+              "FSK",
+              "ASK",
+              "PSK"
+            ]
+          },
+          "txFilterMode": {
+            "type": "select",
+            "options": [
+              "FSK",
+              "ASK",
+              "PSK"
+            ]
+          },
+          "атр": {
+            "type": "checkbox"
+          }
+        },
+        "SWR": {
+          "SWR": {
+            "type": "text"
+          },
+          "SWR_min": {
+            "type": "range",
+            "min": 0,
+            "max": 100,
+            "unit": ""
+          }
+        }
       }
     }
   }

@@ -7,59 +7,77 @@ const wss = new WebSocket.Server({ port: 8080 });
 
 // Хранилище настроек для разных вкладок
 const settingsStore = {
-  Default: {
-    rfLink: {
-      rxFrequency: '15236.4',
-      txFrequency: '156.4',
-      powerOutput: '1',
-      bandwidth: '12.5 kHz'
+  tabs: {
+    Default: {
+      settings: {
+        rfLink: {
+          rxFrequency: '15236.4',
+          txFrequency: '156.4',
+          powerOutput: '1',
+          bandwidth: '12.5 kHz'
+        },
+        loaderFilter: {
+          rxFilterMode: 'FSK',
+          txFilterMode: 'FSK'
+        },
+        loaderSettings: {
+          enable600OhmInput: false,
+          squelchMute: false,
+          invertedPTT: false,
+          rxOnly: false,
+          invertedCD: false,
+          dynamicThreshold: -50
+        }
+      },
+      settingMeta: {
+        rfLink: {
+          rxFrequency: { type: 'text' },
+          txFrequency: { type: 'text' },
+          powerOutput: { type: 'range', min: 0, max: 10, unit: 'W' },
+          bandwidth: { type: 'select', options: ['12.5 kHz', '25 kHz', '50 kHz'] }
+        },
+        loaderFilter: {
+          rxFilterMode: { type: 'select', options: ['FSK', 'ASK', 'PSK'] },
+          txFilterMode: { type: 'select', options: ['FSK', 'ASK', 'PSK'] }
+        },
+        loaderSettings: {
+          enable600OhmInput: { type: 'checkbox' },
+          squelchMute: { type: 'checkbox' },
+          invertedPTT: { type: 'checkbox' },
+          rxOnly: { type: 'checkbox' },
+          invertedCD: { type: 'checkbox' },
+          dynamicThreshold: { type: 'range', min: -100, max: 0, unit: 'dBm' }
+        }
+      }
     },
-    loaderFilter: {
-      rxFilterMode: 'FSK',
-      txFilterMode: 'FSK'
+    'Link 1': {
+      settings: {
+        rfLink: {},
+        loaderFilter: {},
+        loaderSettings: {}
+      },
+      settingMeta: {
+        rfLink: {},
+        loaderFilter: {},
+        loaderSettings: {}
+      }
     },
-    loaderSettings: {
-      enable600OhmInput: false,
-      squelchMute: false,
-      invertedPTT: false,
-      rxOnly: false,
-      invertedCD: false,
-      dynamicThreshold: -50
+    'Link 2': {
+      settings: {
+        rfLink: {},
+        loaderFilter: {},
+        loaderSettings: {}
+      },
+      settingMeta: {
+        rfLink: {},
+        loaderFilter: {},
+        loaderSettings: {}
+      }
     }
-  },
-  'Link 1': {
-    rfLink: {},
-    loaderFilter: {},
-    loaderSettings: {}
-  },
-  'Link 2': {
-    rfLink: {},
-    loaderFilter: {},
-    loaderSettings: {}
   }
 };
 
-// Метаданные для настроек (должны быть синхронизированы с клиентом)
-const serverSettingMeta = {
-  rfLink: {
-    rxFrequency: { type: 'text' },
-    txFrequency: { type: 'text' },
-    powerOutput: { type: 'range', min: 0, max: 10, unit: 'W' },
-    bandwidth: { type: 'select', options: ['12.5 kHz', '25 kHz', '50 kHz'] }
-  },
-  loaderFilter: {
-    rxFilterMode: { type: 'select', options: ['FSK', 'ASK', 'PSK'] },
-    txFilterMode: { type: 'select', options: ['FSK', 'ASK', 'PSK'] }
-  },
-  loaderSettings: {
-    enable600OhmInput: { type: 'checkbox' },
-    squelchMute: { type: 'checkbox' },
-    invertedPTT: { type: 'checkbox' },
-    rxOnly: { type: 'checkbox' },
-    invertedCD: { type: 'checkbox' },
-    dynamicThreshold: { type: 'range', min: -100, max: 0, unit: 'dBm' }
-  }
-};
+// Метаданные для настроек уже включены в структуру settingsStore.tabs[tab].settingMeta
 
 // Функция для отправки команды на модем
 function sendCommandToModem(command) {
@@ -82,12 +100,18 @@ function loadSettings() {
       const filePath = path.join(__dirname, '..', 'public', 'data', file);
       if (fs.existsSync(filePath)) {
         const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        if (data.tab && data.settings) {
-          settingsStore[data.tab] = deepMerge(settingsStore[data.tab], data.settings);
-        }
-        // Также загружаем метаданные, если они сохранены
-        if (data.settingMeta) {
-          Object.assign(serverSettingMeta, data.settingMeta);
+        if (data.tabs) {
+          for (const tab in data.tabs) {
+            if (!settingsStore.tabs[tab]) {
+              settingsStore.tabs[tab] = { settings: {}, settingMeta: {} };
+            }
+            if (data.tabs[tab].settings) {
+              settingsStore.tabs[tab].settings = deepMerge(settingsStore.tabs[tab].settings, data.tabs[tab].settings);
+            }
+            if (data.tabs[tab].settingMeta) {
+              settingsStore.tabs[tab].settingMeta = deepMerge(settingsStore.tabs[tab].settingMeta, data.tabs[tab].settingMeta);
+            }
+          }
         }
       }
     });
@@ -112,7 +136,7 @@ function deepMerge(target, source) {
 }
 
 // Сохраняем настройки в файл
-function saveSettings(tab, settings) {
+function saveSettings(tab, settings, settingMeta) {
   try {
     const fileName = `settings_${tab.toLowerCase().replace(' ', '_')}.json`;
     const filePath = path.join(__dirname, '..', 'public', 'data', fileName);
@@ -122,12 +146,36 @@ function saveSettings(tab, settings) {
       fs.mkdirSync(dir, { recursive: true });
     }
     
-    const dataToSave = JSON.stringify({ tab, settings, settingMeta: serverSettingMeta }, null, 2);
+    // Создаем объект в новом формате
+    const tabData = {
+      tabs: {
+        [tab]: {
+          settings,
+          settingMeta
+        }
+      }
+    };
+    
+    const dataToSave = JSON.stringify(tabData, null, 2);
     console.log(`Saving settings to: ${filePath}`);
     console.log('Data to save:', dataToSave);
     fs.writeFileSync(filePath, dataToSave);
   } catch (error) {
     console.error('Error saving settings:', error);
+  }
+}
+
+function uploadFromFile(file_name){
+  const filePath = path.join(__dirname, '..', 'public', 'data', 'settings', file_name);
+  if (fs.existsSync(filePath)) {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (data.tabs) {
+      // Заменяем все настройки
+      settingsStore.tabs = data.tabs;
+      console.log('Settings loaded from file:', file_name);
+    }
+  } else {
+    console.error('Settings file not found:', filePath);
   }
 }
 
@@ -138,28 +186,93 @@ wss.on('connection', function connection(ws) {
   console.log('New client connected');
 
   // Отправляем текущие настройки и метаданные клиенту
-  Object.entries(settingsStore).forEach(([tab, settings]) => {
+  Object.entries(settingsStore.tabs).forEach(([tab, tabData]) => {
     ws.send(JSON.stringify({
       type: 'settings',
       tab,
-      settings,
-      settingMeta: serverSettingMeta // Отправляем метаданные
+      settings: tabData.settings,
+      settingMeta: tabData.settingMeta
     }));
   });
 
   ws.on('message', async function incoming(message) {
     try {
-      const data = JSON.parse(message);
       
+      const data = JSON.parse(message);
+      if (data.action === 'updateFromFile'){
+        uploadFromFile(data.fileName);
+        wss.clients.forEach(client => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'upload_settings',
+                settingsStore: settingsStore,
+              }));
+            }
+          });
+
+          ws.send(JSON.stringify({
+            type: 'upload_settings',
+            settingsStore: settingsStore,
+          }));
+      }
+
+      // Обработка создания новой вкладки
+      if (data.type === 'create_tab') {
+        const tabName = data.tabName;
+        
+        if (!settingsStore.tabs[tabName]) {
+          // Создаем структуру для новой вкладки
+          settingsStore.tabs[tabName] = {
+            settings: {
+              rfLink: {},
+              loaderFilter: {},
+              loaderSettings: {}
+            },
+            settingMeta: {
+              rfLink: {},
+              loaderFilter: {},
+              loaderSettings: {}
+            }
+          };
+          
+          // Сохраняем настройки в файл
+          saveSettings(tabName, settingsStore.tabs[tabName].settings, settingsStore.tabs[tabName].settingMeta);
+          
+          // Оповещаем всех клиентов о новой вкладке
+          wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'settings',
+                tab: tabName,
+                settings: settingsStore.tabs[tabName].settings,
+                settingMeta: settingsStore.tabs[tabName].settingMeta
+              }));
+            }
+          });
+          
+          ws.send(JSON.stringify({
+            type: 'command_result',
+            success: true,
+            message: `Вкладка '${tabName}' успешно создана`
+          }));
+        } else {
+          ws.send(JSON.stringify({
+            type: 'command_result',
+            success: false,
+            message: `Вкладка '${tabName}' уже существует`
+          }));
+        }
+      }
+
       if (data.type === 'setting_change') {
         // Обновляем значение в хранилище
-        if (!settingsStore[data.tab]) {
-          settingsStore[data.tab] = {};
+        if (!settingsStore.tabs[data.tab]) {
+          settingsStore.tabs[data.tab] = { settings: {}, settingMeta: {} };
         }
-        if (!settingsStore[data.tab][data.category]) {
-          settingsStore[data.tab][data.category] = {};
+        if (!settingsStore.tabs[data.tab].settings[data.category]) {
+          settingsStore.tabs[data.tab].settings[data.category] = {};
         }
-        settingsStore[data.tab][data.category][data.key] = data.value;
+        settingsStore.tabs[data.tab].settings[data.category][data.key] = data.value;
 
         // Отправляем команду на модем
         try {
@@ -180,7 +293,7 @@ wss.on('connection', function connection(ws) {
           }));
 
           // Сохраняем изменения в файл
-          saveSettings(data.tab, settingsStore[data.tab]);
+          saveSettings(data.tab, settingsStore.tabs[data.tab].settings, settingsStore.tabs[data.tab].settingMeta);
 
           // Отправляем обновление всем клиентам
           wss.clients.forEach(client => {
@@ -189,8 +302,8 @@ wss.on('connection', function connection(ws) {
                 type: 'settings',
                 tab: data.tab,
                 category: data.category,
-                settings: settingsStore[data.tab],
-                settingMeta: serverSettingMeta // Отправляем метаданные
+                settings: settingsStore.tabs[data.tab].settings,
+                settingMeta: settingsStore.tabs[data.tab].settingMeta
               }));
             }
           });
@@ -204,12 +317,18 @@ wss.on('connection', function connection(ws) {
       } else if (data.type === 'create_parameter') {
         const { tab, category, key, initialValue, meta } = data;
 
-        if (!settingsStore[tab]) settingsStore[tab] = {};
-        if (!settingsStore[tab][category]) settingsStore[tab][category] = {};
-        settingsStore[tab][category][key] = initialValue;
+        if (!settingsStore.tabs[tab]) {
+          settingsStore.tabs[tab] = { settings: {}, settingMeta: {} };
+        }
+        if (!settingsStore.tabs[tab].settings[category]) {
+          settingsStore.tabs[tab].settings[category] = {};
+        }
+        settingsStore.tabs[tab].settings[category][key] = initialValue;
 
-        if (!serverSettingMeta[category]) serverSettingMeta[category] = {};
-        serverSettingMeta[category][key] = meta;
+        if (!settingsStore.tabs[tab].settingMeta[category]) {
+          settingsStore.tabs[tab].settingMeta[category] = {};
+        }
+        settingsStore.tabs[tab].settingMeta[category][key] = meta;
 
         try {
           const command = {
@@ -224,14 +343,14 @@ wss.on('connection', function connection(ws) {
           }));
 
           // Сохраняем и рассылаем обновленные настройки и метаданные
-          saveSettings(tab, settingsStore[tab]);
+          saveSettings(tab, settingsStore.tabs[tab].settings, settingsStore.tabs[tab].settingMeta);
           wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify({
                 type: 'settings',
                 tab,
-                settings: settingsStore[tab],
-                settingMeta: serverSettingMeta
+                settings: settingsStore.tabs[tab].settings,
+                settingMeta: settingsStore.tabs[tab].settingMeta
               }));
             }
           });
@@ -247,8 +366,10 @@ wss.on('connection', function connection(ws) {
         const { tab, category, key } = data;
         let value = null;
 
-        if (settingsStore[tab] && settingsStore[tab][category] && settingsStore[tab][category][key] !== undefined) {
-          value = settingsStore[tab][category][key];
+        if (settingsStore.tabs[tab] && 
+            settingsStore.tabs[tab].settings[category] && 
+            settingsStore.tabs[tab].settings[category][key] !== undefined) {
+          value = settingsStore.tabs[tab].settings[category][key];
         }
         
         // Отправляем команду на модем, чтобы получить актуальное значение
