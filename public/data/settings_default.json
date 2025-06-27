@@ -5,7 +5,7 @@
         "rfLink": {
           "rxFrequency": "123456",
           "txFrequency": "554",
-          "powerOutput": 5,
+          "powerOutput": 6,
           "bandwidth": "50 kHz",
           "a": 66,
           "afzxc": 29
@@ -27,7 +27,7 @@
         },
         "SWR": {
           "SWR": 1.5,
-          "SWR_min": 42,
+          "SWR_min": 44,
           "SWR_max": 1.8,
           "SWR_min_dB": -10,
           "SWR_max_dB": 10,
