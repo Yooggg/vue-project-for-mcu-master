@@ -165,6 +165,26 @@ function saveSettings(tab, settings, settingMeta) {
   }
 }
 
+// Сохраняем настроек в файл settings_updated.json из settingsStore
+function saveSettings() {
+  try {
+    const fileName = `settings_updated.json`;
+    const filePath = path.join(__dirname, '..', 'public', 'data', 'settings' ,fileName);
+    
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    const dataToSave = JSON.stringify(settingsStore, null, 2);
+    console.log(`Saving settings to: ${filePath}`);
+    console.log('Data to save:', dataToSave);
+    fs.writeFileSync(filePath, dataToSave);
+  } catch (error) {
+    console.error('Error saving settings:', error);
+  }
+}
+
 function uploadFromFile(file_name){
   const filePath = path.join(__dirname, '..', 'public', 'data', 'settings', file_name);
   if (fs.existsSync(filePath)) {
@@ -200,7 +220,10 @@ wss.on('connection', function connection(ws) {
       
       const data = JSON.parse(message);
       if (data.action === 'updateFromFile'){
+        Object.keys(settingsStore).forEach(key => delete settingsStore[key]);
+        console.log(settingsStore);
         uploadFromFile(data.fileName);
+        loadSettings();
         wss.clients.forEach(client => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify({
@@ -294,6 +317,7 @@ wss.on('connection', function connection(ws) {
 
           // Сохраняем изменения в файл
           saveSettings(data.tab, settingsStore.tabs[data.tab].settings, settingsStore.tabs[data.tab].settingMeta);
+          //saveSettings();
 
           // Отправляем обновление всем клиентам
           wss.clients.forEach(client => {
