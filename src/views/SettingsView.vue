@@ -101,6 +101,7 @@
                     v-model.number="parameters[activeTab].settings[category][key]"
                     :min="getSettingRange(activeTab, category, key).min"
                     :max="getSettingRange(activeTab, category, key).max"
+                    :step="getSettingRange(activeTab, category, key).step"
                     @change="settingChanged(activeTab, category, key)"
                   />
                 </div>
@@ -165,6 +166,9 @@
                 </div>
                 <div class="col">
                   <input type="number" class="form-control" v-model.number="newSetting.max" placeholder="Max" />
+                </div>
+                <div class="col">
+                  <input type="number" class="form-control" v-model.number="newSetting.step" placeholder="Step" />
                 </div>
                 <div class="col">
                   <input type="text" class="form-control" v-model="newSetting.unit" placeholder="Unit" />
@@ -407,7 +411,7 @@ const parameters = reactive({
       rfLink: {
         rxFrequency: '15236.4',
         txFrequency: '156.4',
-        powerOutput: '1',
+        powerOutput: 5,
         bandwidth: '12.5 kHz'
       },
       loaderFilter: {
@@ -477,6 +481,7 @@ const newSetting = reactive({
   type: 'text',
   min: 0,
   max: 100,
+  step: 0,
   unit: '',
   optionsRaw: ''
 });
@@ -690,6 +695,7 @@ function getSettingRange(tab, category, key) {
   return {
     min: meta.min || 0,
     max: meta.max || 100,
+    step: meta.step || 0,
     unit: meta.unit || ''
   };
 }
