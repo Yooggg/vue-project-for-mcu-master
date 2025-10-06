@@ -497,6 +497,7 @@ const commandData = reactive({
   newSettingType: 'text',
   newSettingMin: 0,
   newSettingMax: 100,
+  newSettingStep: 0.1,
   newSettingUnit: '',
   newSettingOptionsRaw: ''
 });
@@ -763,6 +764,7 @@ function addSetting() {
   if (newSetting.type === 'range') {
     meta.min = newSetting.min;
     meta.max = newSetting.max;
+    meta.step = newSetting.step;
     meta.unit = newSetting.unit;
     initialValue = newSetting.min;
   } else if (newSetting.type === 'select') {
@@ -790,6 +792,7 @@ function addSetting() {
     type: 'text',
     min: 0,
     max: 100,
+    step: 1,
     unit: '',
     optionsRaw: ''
   });
